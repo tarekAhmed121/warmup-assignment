@@ -50,20 +50,22 @@ function getIdleTime(startTime, endTime) {
     const start = parseTimeString(startTime);
     const end = parseTimeString(endTime);
     
-    // Delivery hours: 8 AM to 10 PM (inclusive)
-    const deliveryStart = 8 * 3600;   // 8:00 AM = 28800 seconds
-    const deliveryEnd = 22 * 3600;    // 10:00 PM = 79200 seconds
+    // should be from 8 am to 10 pm  
+    const deliveryStart = 8 * 3600;   // 8AM = 28800 seconds
+    const deliveryEnd = 22 * 3600;    // 10PM = 79200 seconds
     
     let idleBefore = 0;
     let idleAfter = 0;
     
-    // Idle time before 8 AM
+    // Idle time  is before 8 AM and after 10 pm
+
+
     if (start < deliveryStart) {
         idleBefore = Math.min(end, deliveryStart) - start;
         if (idleBefore < 0) idleBefore = 0;
     }
     
-    // Idle time after 10 PM
+    
     if (end > deliveryEnd) {
         idleAfter = end - Math.max(start, deliveryEnd);
         if (idleAfter < 0) idleAfter = 0;
@@ -94,7 +96,20 @@ function getActiveTime(shiftDuration, idleTime) {
 // Returns: boolean
 // ============================================================
 function metQuota(date, activeTime) {
-    // TODO: Implement this function
+  
+    // normal days need 8h24m to meet their quota 
+//Eid special days need 6 hours to meet their quota which is  from 10th April to 30th April 2025 inclusive
+    const parts = date.split("-").map(Number); 
+    const [yr, mo, day] = parts;
+    let quotaSec;
+    if (yr === 2025 && mo === 4 && day >= 10 && day <= 30) {
+        quotaSec = 6 * 3600;
+    } else {
+        quotaSec = 8 * 3600 + 24 * 60;
+    }
+
+    const activeSec = parseHMS(activeTime);
+    return activeSec >= quotaSec;
 }
 
 // ============================================================
@@ -104,7 +119,44 @@ function metQuota(date, activeTime) {
 // Returns: object with 10 properties or empty object {}
 // ============================================================
 function addShiftRecord(textFile, shiftObj) {
-    // TODO: Implement this function
+    // read the file
+    let fileContent = fs.readFileSync(textFile, { encoding: 'utf8' });
+    let lines = fileContent.trim().split('\n');
+    
+    // check for duplicate (same driverID and date)
+    for (let i = 1; i < lines.length; i++) {
+        let parts = lines[i].split(',');
+        if (parts[0] === shiftObj.driverID && parts[2] === shiftObj.date) {
+            return {};  // duplicate found
+        }
+    }
+    
+    // calculate derived fields
+    const shiftDuration = getShiftDuration(shiftObj.startTime, shiftObj.endTime);
+    const idleTime = getIdleTime(shiftObj.startTime, shiftObj.endTime);
+    const activeTime = getActiveTime(shiftDuration, idleTime);
+    const metQuotaResult = metQuota(shiftObj.date, activeTime);
+    const hasBonus = false;
+    
+    // create result object with 10 properties
+    const resultObj = {
+        driverID: shiftObj.driverID,
+        driverName: shiftObj.driverName,
+        date: shiftObj.date,
+        startTime: shiftObj.startTime,
+        endTime: shiftObj.endTime,
+        shiftDuration: shiftDuration,
+        idleTime: idleTime,
+        activeTime: activeTime,
+        metQuota: metQuotaResult,
+        hasBonus: hasBonus
+    };
+    
+    // format as CSV line and append to file
+    const csvLine = `${resultObj.driverID},${resultObj.driverName},${resultObj.date},${resultObj.startTime},${resultObj.endTime},${resultObj.shiftDuration},${resultObj.idleTime},${resultObj.activeTime},${resultObj.metQuota},${resultObj.hasBonus}`;
+    fs.appendFileSync(textFile, '\n' + csvLine);
+    
+    return resultObj;
 }
 
 // ============================================================
@@ -116,7 +168,24 @@ function addShiftRecord(textFile, shiftObj) {
 // Returns: nothing (void)
 // ============================================================
 function setBonus(textFile, driverID, date, newValue) {
-    // TODO: Implement this function
+    // read the file
+    let fileContent = fs.readFileSync(textFile, { encoding: 'utf8' });
+    let lines = fileContent.trim().split('\n');
+    
+    // find and update the matching record
+    for (let i = 1; i < lines.length; i++) {
+        let parts = lines[i].split(',');
+        if (parts[0] === driverID && parts[2] === date) {  //checks if theres same driverID and date 
+            
+            parts[9] = newValue; //if there is it replaces a value with a new value at the back of the array
+            
+            lines[i] = parts.join(',');
+            break;
+        }
+    }
+    
+    // write the file back
+    fs.writeFileSync(textFile, lines.join('\n'));
 }
 
 // ============================================================
