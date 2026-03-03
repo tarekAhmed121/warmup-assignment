@@ -147,7 +147,7 @@ function addShiftRecord(textFile, shiftObj) {
         endTime: shiftObj.endTime,
         shiftDuration: shiftDuration,
         idleTime: idleTime,
-        activeTime: activeTime,
+        activeTime: activeTime, 
         metQuota: metQuotaResult,
         hasBonus: hasBonus
     };
@@ -196,7 +196,33 @@ function setBonus(textFile, driverID, date, newValue) {
 // Returns: number (-1 if driverID not found)
 // ============================================================
 function countBonusPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
+
+    //reads the text file and splits it into lines
+    const fileContent = fs.readFileSync(textFile, { encoding: "utf8" });
+    const lines = fileContent.trim().split("\n");
+// makes the month in a 2 digit format
+    const targetMonth = String(month).padStart(2, "0");
+    let driverFound = false;
+    let bonusCount = 0;
+//checks to see if the driver Id is the same as the one in the text file and same thing for the month 
+    for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(",");
+        const rowDriverID = parts[0];
+        const rowDate = parts[2];
+        const rowHasBonus = String(parts[9]).trim().toLowerCase();
+
+        if (rowDriverID !== driverID) continue;
+
+        driverFound = true;
+        const rowMonth = rowDate.split("-")[1];
+
+        if (rowMonth === targetMonth && rowHasBonus === "true") {
+            bonusCount++;
+        }
+    }
+// if doesnt exit return -1
+    if (!driverFound) return -1;
+    return bonusCount;
 }
 
 // ============================================================

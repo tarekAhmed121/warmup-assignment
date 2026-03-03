@@ -11,9 +11,13 @@ const {
     getNetPay
 } = require("./main.js");
 
+const fs = require("fs");
+
 // don't remove the above code
 // You need the above code to use your implemented functions from main.js
 // You can test here your implemented functions from main.js
+
+fs.writeFileSync("./shifts.txt", fs.readFileSync("./PublicTestFiles/shiftsPublic.txt", { encoding: "utf8" }), { encoding: "utf8" });
 
 // ===================== Test getShiftDuration =====================
 let firstIn = "6:01:20 am";
